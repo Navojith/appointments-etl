@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+
+[dev-packages]
+
+[scripts]
+etl = "python -m etl"
+solution = "python solution.py"
+test = "python -m unittest -v"
+
+[requires]
+python_version = "3.14"

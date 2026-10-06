@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+.ruff_cache/
+
+.env
+
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+logs/
+docker-data/

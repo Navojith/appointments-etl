@@ -1,0 +1,6 @@
+**/__pycache__
+*.db*
+logs
+.env
+tests
+k8s
