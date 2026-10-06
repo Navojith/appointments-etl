@@ -12,19 +12,23 @@ from etl.pipeline import run
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
 
-def configure_logging(log_dir: str) -> None:
-    Path(log_dir).mkdir(parents=True, exist_ok=True)
-    file_handler = TimedRotatingFileHandler(
-        Path(log_dir) / "etl.log",
-        when="midnight",
-        backupCount=30,
-        encoding="utf-8",
-        utc=True,
-    )
+def configure_logging(log_dir: str | None) -> None:
+    handlers: list[logging.Handler] = [logging.StreamHandler()]
+    if log_dir:
+        Path(log_dir).mkdir(parents=True, exist_ok=True)
+        handlers.append(
+            TimedRotatingFileHandler(
+                Path(log_dir) / "etl.log",
+                when="midnight",
+                backupCount=30,
+                encoding="utf-8",
+                utc=True,
+            )
+        )
     logging.basicConfig(
         level=os.environ.get("ETL_LOG_LEVEL", "INFO").upper(),
         format=LOG_FORMAT,
-        handlers=[logging.StreamHandler(), file_handler],
+        handlers=handlers,
     )
 
 
@@ -37,6 +41,11 @@ def main() -> int:
     )
     parser.add_argument(
         "--db-path", help="SQLite database path (overrides ETL_DB_PATH)"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="extract and transform only; write nothing to the database",
     )
     args = parser.parse_args()
 
@@ -51,10 +60,10 @@ def main() -> int:
         settings,
         **{key: value for key, value in overrides.items() if value is not None},
     )
-    configure_logging(settings.log_dir)
+    configure_logging(None if args.dry_run else settings.log_dir)
 
     try:
-        run(settings)
+        run(settings, dry_run=args.dry_run)
     except Exception:
         logging.getLogger("etl").exception("Pipeline failed")
         return 1

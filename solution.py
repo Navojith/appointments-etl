@@ -199,18 +199,35 @@ def load(conn, records):
     return len(records)
 
 
-def run(db_path="appointments.db", page_size=3, fetch=fetch_appointments):
-    logger.info("Pipeline started (db=%s, page_size=%d)", db_path, page_size)
+def run(
+    db_path="appointments.db", page_size=3, fetch=fetch_appointments, dry_run=False
+):
+    logger.info(
+        "Pipeline started (db=%s, page_size=%d, dry_run=%s)",
+        db_path,
+        page_size,
+        dry_run,
+    )
+    extracted = 0
+    valid = []
+    for raw in extract(page_size, fetch):
+        extracted += 1
+        record = transform(raw)
+        if record:
+            valid.append(record)
+
+    if dry_run:
+        logger.info(
+            "Dry run completed: extracted=%d would_load=%d skipped=%d",
+            extracted,
+            len(valid),
+            extracted - len(valid),
+        )
+        return extracted, len(valid)
+
     conn = sqlite3.connect(db_path)
     try:
         conn.execute(SCHEMA)
-        extracted = 0
-        valid = []
-        for raw in extract(page_size, fetch):
-            extracted += 1
-            record = transform(raw)
-            if record:
-                valid.append(record)
         loaded = load(conn, valid)
     finally:
         conn.close()
@@ -230,6 +247,11 @@ def main():
     parser.add_argument("--page-size", type=int, default=3)
     parser.add_argument("--db-path", default="appointments.db")
     parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="extract and transform only; write nothing to the database",
+    )
+    parser.add_argument(
         "--test", action="store_true", help="run the unit tests and exit"
     )
     args = parser.parse_args()
@@ -241,7 +263,7 @@ def main():
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
-    run(args.db_path, args.page_size)
+    run(args.db_path, args.page_size, dry_run=args.dry_run)
 
 
 VALID = {
@@ -327,6 +349,13 @@ class RunTests(unittest.TestCase):
         self.assertEqual([r[0] for r in rows], ["A001", "A003", "A004", "A005"])
         self.assertIsNone(rows[1][1])
         self.assertTrue(all(r[2] for r in rows))
+
+    def test_dry_run_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "test.db"
+            with self.assertLogs(logger, "INFO"):
+                self.assertEqual(run(str(db), dry_run=True), (6, 4))
+            self.assertFalse(db.exists())
 
 
 if __name__ == "__main__":

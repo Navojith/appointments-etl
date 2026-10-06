@@ -121,6 +121,14 @@ class ConfigTests(unittest.TestCase):
 
 
 class PipelineTests(unittest.TestCase):
+    def test_dry_run_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "test.db"
+            with self.assertLogs("etl", "INFO"):
+                counts = run(Settings(db_path=str(db)), dry_run=True)
+            self.assertFalse(db.exists())
+        self.assertEqual(counts, {"extracted": 6, "loaded": 4, "skipped": 2})
+
     def test_end_to_end_and_rerun_has_no_duplicates(self):
         with tempfile.TemporaryDirectory() as tmp:
             db = str(Path(tmp) / "test.db")

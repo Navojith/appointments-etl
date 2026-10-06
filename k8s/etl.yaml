@@ -44,3 +44,35 @@ spec:
             - name: data
               persistentVolumeClaim:
                 claimName: petdesk-etl-data
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: petdesk-etl-dry-run
+spec:
+  schedule: '0 * * * *'
+  suspend: true
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsUser: 10001
+          containers:
+            - name: etl
+              image: petdesk-etl:latest
+              imagePullPolicy: IfNotPresent
+              args: ['python', '-m', 'etl', '--dry-run']
+              env:
+                - name: ETL_PAGE_SIZE
+                  value: '100'
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 64Mi
+                limits:
+                  memory: 128Mi

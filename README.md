@@ -7,6 +7,7 @@ Has 2 solutions. A single file version and a package version
 ```bash
 python solution.py
 python solution.py --page-size 2 --db-path appointments.db
+python solution.py --dry-run
 python solution.py --test
 ```
 
@@ -16,6 +17,7 @@ python solution.py --test
 cp .env.sample .env
 python -m etl
 python -m etl --page-size 2
+python -m etl --dry-run
 python -m unittest
 ```
 
@@ -37,12 +39,14 @@ In Git Bash, run `export MSYS_NO_PATHCONV=1` first.
 
 ## Kubernetes
 
-Create Docker Image and then run:
-
 ```bash
 minikube start
-minikube image load petdesk-etl:latest
+minikube image build -t petdesk-etl:latest .
 kubectl apply -f k8s/etl.yaml
 kubectl create job --from=cronjob/petdesk-etl etl-now
 kubectl logs -f job/etl-now
+kubectl create job --from=cronjob/petdesk-etl-dry-run etl-dry-run
+kubectl logs -f job/etl-dry-run
 ```
+
+Rerun `minikube image build` after code changes. Delete old jobs before reusing a name: `kubectl delete job etl-now etl-dry-run`.
